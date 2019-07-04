@@ -12,6 +12,7 @@ import graphql.parser.Parser;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class BackwardCompatibilityValidator {
     private final ValidationResult validationResult = new ValidationResult();
@@ -28,8 +29,7 @@ public class BackwardCompatibilityValidator {
 
 
         oldDocument.getDefinitions().forEach(x -> this.isBackwardCompatible(x, newDocument.getDefinitions()));
-    }
-
+        }
 
     private void isBackwardCompatible(final Definition oldDef, final List<Definition> newDefs) {
         // first find the corresponding definition in new schema.
@@ -40,7 +40,7 @@ public class BackwardCompatibilityValidator {
 
         if (!newDef.isPresent()) {
             updateResult(true, (FieldDefinition) oldDef);
-        };
+        }
 
         final List<FieldDefinition> oldChildren = ((ObjectTypeDefinition) oldDef).getFieldDefinitions();
         final List<FieldDefinition> newChildren = ((ObjectTypeDefinition) newDef.get()).getFieldDefinitions();

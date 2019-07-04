@@ -6,7 +6,6 @@ type Person {
 }
 
 type Address {
-    number: Int
     street: String
 }
 
