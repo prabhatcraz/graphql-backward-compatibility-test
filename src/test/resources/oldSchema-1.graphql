@@ -13,10 +13,10 @@ type Address {
 type Education {
     school: School
     graduated: Boolean
-    completed: [String]
+    completed: [Int]
 }
 
 type School {
-    name: String
+    name: String!
     address: Address
 }
