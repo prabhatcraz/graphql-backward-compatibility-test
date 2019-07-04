@@ -19,3 +19,16 @@ type School {
     name: String!
     address: Address
 }
+
+type Query {
+    persons: [Person]
+}
+
+
+type Query {
+    persons: [Person]
+}
+
+type Mutation {
+
+}

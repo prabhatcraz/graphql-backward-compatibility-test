@@ -15,13 +15,12 @@ public class BackwardCompatibilityValidatorTest {
         final BackwardCompatibilityValidator backwardCompatibilityValidator = new BackwardCompatibilityValidator();
 
         // WHEN
-        String oldSchemaFilePath = getClass().getClassLoader().getResource("newSchema-1.graphql").getFile();
-        String newSchemaFilePath = getClass().getClassLoader().getResource("oldSchema-1.graphql").getFile();
-        backwardCompatibilityValidator.validate(oldSchemaFilePath, newSchemaFilePath);
+        String oldSchemaFilePath = getClass().getClassLoader().getResource("oldSchema-1.graphql").getFile();
+        String newSchemaFilePath = getClass().getClassLoader().getResource("newSchema-1.graphql").getFile();
+        final ValidationResult result = backwardCompatibilityValidator.validate(oldSchemaFilePath, newSchemaFilePath);
 
         // THEN
-        assertFalse(backwardCompatibilityValidator.getValidationResult().isBackwardCompatible());
-        backwardCompatibilityValidator.getValidationResult().getErrors().forEach(System.out::println);
-
+        assertFalse(result.isBackwardCompatible());
+        result.getErrors().forEach(System.out::println);
     }
 }

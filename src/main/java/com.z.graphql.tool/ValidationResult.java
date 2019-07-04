@@ -12,7 +12,7 @@ public class ValidationResult {
     private List<String> warning;
 
     public ValidationResult () {
-        isBackwardCompatible = false;
+        isBackwardCompatible = true;
         errors = new ArrayList<>();
         warning = new ArrayList<>();
     }

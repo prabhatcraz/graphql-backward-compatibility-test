@@ -10,85 +10,68 @@ import graphql.language.TypeName;
 import graphql.parser.Parser;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class BackwardCompatibilityValidator {
-    private final ValidationResult validationResult = new ValidationResult();
 
-    public ValidationResult getValidationResult() {
-        return validationResult;
+  private final TypeComparator typeComparator;
+  private final QueryComparator queryComparator;
+
+  public BackwardCompatibilityValidator() {
+    typeComparator = new TypeComparator();
+    queryComparator = new QueryComparator();
+  }
+
+  public ValidationResult validate(final String oldSchemaFilePath, final String newSchemaFilePath) throws IOException {
+
+    final Parser parser = new Parser();
+
+    final Document oldDocument = parser.parseDocument(FileUtils.readFileToString(oldSchemaFilePath));
+    final Document newDocument = parser.parseDocument(FileUtils.readFileToString(newSchemaFilePath));
+
+    final List<String> messges = oldDocument.getDefinitions().stream()
+        .map(x -> this.checkBakwardCompatibility(x, newDocument.getDefinitions().stream()
+            .filter(y -> this.isSameType(x, y))
+            .findFirst()
+            .orElse(null)))
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
+
+    final ValidationResult validationResult = new ValidationResult();
+    if(messges.size() > 0) {
+      validationResult.setBackwardCompatible(false);
+      validationResult.setErrors(messges);
+    }
+    return validationResult;
+  }
+
+  private boolean isSameType(Definition a, Definition b) {
+    return (((ObjectTypeDefinition) a).getName()).equals(((ObjectTypeDefinition) b).getName());
+  }
+
+  /**
+   * Its guaranteed that this method gets the types with same name.
+   */
+  private List<String> checkBakwardCompatibility(final Definition oldDef, final Definition newDef) {
+    final List<String> errorMessage = new ArrayList<>();
+    if (newDef == null) {
+      errorMessage.add(String.format("Type '%s' has been removed", ((ObjectTypeDefinition)oldDef).getName()));
     }
 
-    public void validate(final String oldSchemaFilePath, final String newSchemaFilePath) throws IOException {
-        final Parser parser = new Parser();
+    final String typeName = ((ObjectTypeDefinition)oldDef).getName();
 
-        final Document oldDocument = parser.parseDocument(FileUtils.readFileToString(oldSchemaFilePath));
-        final Document newDocument = parser.parseDocument(FileUtils.readFileToString(newSchemaFilePath));
+    if(typeName.equalsIgnoreCase("Query") ) {
 
+    } else if(typeName.equalsIgnoreCase("Mutation") ) {
 
-        oldDocument.getDefinitions().forEach(x -> this.isBackwardCompatible(x, newDocument.getDefinitions()));
-        }
+    } else if(typeName.equalsIgnoreCase("Subscription") ) {
 
-    private void isBackwardCompatible(final Definition oldDef, final List<Definition> newDefs) {
-        // first find the corresponding definition in new schema.
-        Optional<Definition> newDef = newDefs.stream()
-                .filter(x -> oldDef.getClass().equals(x.getClass()) &&
-                        ((ObjectTypeDefinition) oldDef).getName().equals((((ObjectTypeDefinition) x).getName())))
-                .findFirst();
-
-        if (!newDef.isPresent()) {
-            updateResult(true, (FieldDefinition) oldDef);
-        }
-
-        final List<FieldDefinition> oldChildren = ((ObjectTypeDefinition) oldDef).getFieldDefinitions();
-        final List<FieldDefinition> newChildren = ((ObjectTypeDefinition) newDef.get()).getFieldDefinitions();
-
-        oldChildren.forEach(oldType -> {
-            Optional<FieldDefinition> child = newChildren.stream()
-                    .filter(y -> y.getName().equals(oldType.getName()))
-                    .findFirst();
-
-            if (!child.isPresent()) {
-                updateResult(true, oldType);
-            }
-
-            final Type childType = child.get().getType();
-            final Type oldTypeType = oldType.getType();
-            boolean isCorrectType = childType.getClass().equals(oldTypeType.getClass());
-            if (!isCorrectType) {
-                updateResult(false, oldType);
-            } else {
-                final String childTypeName = getNameOfAType(childType);
-                final String oldTypeTypeName = getNameOfAType(oldTypeType);
-                final boolean typeMatch = childTypeName != null && childTypeName.equals(oldTypeTypeName);
-                if (!typeMatch) {
-                    updateResult(false, oldType);
-                }
-            }
-        });
+    } else {
+      errorMessage.addAll(typeComparator.compare((ObjectTypeDefinition)oldDef, (ObjectTypeDefinition)newDef));
     }
-
-    private void updateResult(boolean isFieldMissing, FieldDefinition fieldDefinition) {
-        final String message;
-        if (isFieldMissing) {
-            message = String.format("Field %s from previous schema not found at line number: %d:%d ",
-                    fieldDefinition.getName(), fieldDefinition.getSourceLocation().getLine(), fieldDefinition.getSourceLocation().getColumn());
-        } else {
-            message = String.format("Type mismatch found for field: %s at %d:%d",
-                    fieldDefinition.getName(), fieldDefinition.getSourceLocation().getLine(), fieldDefinition.getSourceLocation().getColumn());
-        }
-        this.validationResult.getErrors().add(message);
-        this.validationResult.setBackwardCompatible(false);
-    }
-
-    private String getNameOfAType(final Type type) {
-        if (type.getClass().equals(TypeName.class)) {
-            return ((TypeName) type).getName();
-        } else if (type.getClass().equals(ListType.class)) {
-            return getNameOfAType(((ListType) type).getType());
-        }
-        return null;
-    }
+    return errorMessage;
+  }
 }
